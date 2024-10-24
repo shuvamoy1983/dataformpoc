@@ -1,0 +1,37 @@
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  GCP_PROJECT_ID: 'genial-venture-439605-i2'
+  GCP_DATAFORM_WORKSPACE: 'single-table'
+  SERVICE_ACCOUNT_KEY: 'shuva_service_account.json'
+
+steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+
+  - task: DownloadSecureFile@1
+    name: 'serviceAccountKey'
+    inputs:
+      secureFile: $(SERVICE_ACCOUNT_KEY)
+
+  - script: |
+      python -m pip install --upgrade google-cloud-storage google-cloud-dataform
+    displayName: 'Install GCP SDK and Dataform library'
+
+  - script: |
+      export GOOGLE_APPLICATION_CREDENTIALS=$(serviceAccountKey.secureFilePath)
+      gcloud auth activate-service-account --key-file=$(serviceAccountKey.secureFilePath)
+      gcloud config set project $(GCP_PROJECT_ID)
+
+      # Deploy Dataform project
+      dataform push
+      dataform run
+    displayName: 'Deploy Dataform Project'
